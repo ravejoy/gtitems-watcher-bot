@@ -1,21 +1,32 @@
 {
-  "name": "rpgtop-item-monitor",
+  "name": "gtitems-watcher-bot",
   "version": "0.1.0",
-  "main": "index.js",
+  "description": "A Telegram bot that scans and searches items on review pages (with hourly subscription support).",
+  "license": "MIT",
+  "author": "",
+  "type": "module",
+  "main": "dist/index.js",
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "test": "vitest run",
     "dev": "node --import=ts-node/register/esm src/index.ts",
     "build": "tsc -p .",
     "start": "node dist/index.js",
+    "test": "vitest run",
     "test:ui": "vitest",
     "lint": "eslint . --ext .ts",
-    "format": "prettier -w ."
+    "format": "prettier -w .",
+    "prepare": "husky"
   },
-  "keywords": [],
-  "author": "",
-  "license": "MIT",
-  "description": "Telegram bot that monitors RPGTop review pages for items (scan, search, hourly subscription)",
-  "type": "module",
+  "lint-staged": {
+    "*.{ts,js,json,md}": [
+      "prettier --write"
+    ],
+    "*.ts": [
+      "eslint --fix"
+    ]
+  },
   "dependencies": {
     "axios": "^1.11.0",
     "better-sqlite3": "^12.2.0",
@@ -31,6 +42,8 @@
     "eslint": "^9.35.0",
     "eslint-config-prettier": "^10.1.8",
     "eslint-plugin-import": "^2.32.0",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.1.6",
     "prettier": "^3.6.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.2",
