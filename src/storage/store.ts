@@ -1,7 +1,7 @@
-import { UserPrefs } from '../domain/types.js';
+import type { UserPrefs } from '../domain/types.js';
 
 export interface Store {
-  upsertPrefs(p: UserPrefs): void;
-  getPrefs(userId: number): UserPrefs | undefined;
-  allSubscribers(): UserPrefs[];
+  upsertPrefs(p: UserPrefs): Promise<void>;
+  getPrefs(userId: number): Promise<UserPrefs | undefined>;
+  allSubscribers(): Promise<UserPrefs[]>;
 }
