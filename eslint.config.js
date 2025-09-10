@@ -14,7 +14,19 @@ export default [
     languageOptions: { ecmaVersion: 'latest', sourceType: 'module' },
     plugins: { import: importPlugin },
     rules: {
-      'import/order': ['warn', { 'newlines-between': 'always' }],
+      'import/order': [
+        'warn',
+        {
+          groups: [
+            'builtin', // Node.js builtins (fs, path)
+            'external', // npm packages
+            'internal', // aliased paths like @/services/*
+            ['parent', 'sibling', 'index'], // all local files together
+          ],
+          'newlines-between': 'always',
+          alphabetize: { order: 'asc', caseInsensitive: true },
+        },
+      ],
     },
   },
 
