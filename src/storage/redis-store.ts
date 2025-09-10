@@ -1,8 +1,6 @@
 import { Redis } from '@upstash/redis';
-
-import type { UserPrefs } from '../domain/types.js';
-
 import type { Store } from './store.js';
+import type { UserPrefs } from '../domain/types.js';
 
 export class RedisStore implements Store {
   private r: Redis;
@@ -27,8 +25,8 @@ export class RedisStore implements Store {
       filters: JSON.stringify(p.filters),
       updatedAt: p.updatedAt,
     });
-    if (p.subscribed) await this.r.sadd(this.idxKey, p.userId);
-    else await this.r.srem(this.idxKey, p.userId);
+    if (p.subscribed) await this.r.sadd(this.idxKey, String(p.userId));
+    else await this.r.srem(this.idxKey, String(p.userId));
   }
 
   async getPrefs(userId: number): Promise<UserPrefs | undefined> {
@@ -44,7 +42,7 @@ export class RedisStore implements Store {
   }
 
   async allSubscribers(): Promise<UserPrefs[]> {
-    const ids = (await this.r.smembers<number>(this.idxKey)) || [];
+    const ids = (await this.r.smembers<string[]>(this.idxKey)) ?? [];
     if (ids.length === 0) return [];
     const results: UserPrefs[] = [];
     for (const id of ids) {

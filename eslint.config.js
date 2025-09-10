@@ -17,13 +17,8 @@ export default [
       'import/order': [
         'warn',
         {
-          groups: [
-            'builtin', // Node.js builtins (fs, path)
-            'external', // npm packages
-            'internal', // aliased paths like @/services/*
-            ['parent', 'sibling', 'index'], // all local files together
-          ],
-          'newlines-between': 'always',
+          groups: ['builtin', 'external', 'internal', ['parent', 'sibling', 'index']],
+          'newlines-between': 'never',
           alphabetize: { order: 'asc', caseInsensitive: true },
         },
       ],
