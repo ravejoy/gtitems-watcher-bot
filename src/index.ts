@@ -1,28 +1,19 @@
 import 'dotenv/config';
-import { Telegraf } from 'telegraf';
+import { SqliteStore } from './storage/sqliteStore.js';
+import { UserPrefs } from './domain/types.js';
 
-const raw = process.env.BOT_TOKEN ?? '';
-const token = raw.trim();
+const store = new SqliteStore();
 
-const tokenLooksOk = /^\d+:[\w-]{20,}$/.test(token); // базова перевірка формату
+// test insert
+const prefs: UserPrefs = {
+  userId: 123,
+  pages: 20,
+  subscribed: true,
+  filters: ['Нектар', 'Свиток'],
+  updatedAt: Date.now(),
+};
 
-if (!token) {
-  throw new Error('BOT_TOKEN is not defined in .env');
-}
-if (!tokenLooksOk) {
-  throw new Error(
-    'BOT_TOKEN looks invalid (format check failed). Remove quotes/spaces and try again.',
-  );
-}
+store.upsertPrefs(prefs);
 
-const bot = new Telegraf(token);
-
-bot.start((ctx) => ctx.reply('Hello! Bot is running.'));
-
-bot.launch().then(() => {
-  const masked = token.slice(0, 10) + '...' + token.slice(-6);
-  console.log('Bot started with token:', masked);
-});
-
-process.once('SIGINT', () => bot.stop('SIGINT'));
-process.once('SIGTERM', () => bot.stop('SIGTERM'));
+console.log('Fetched:', store.getPrefs(123));
+console.log('Subscribers:', store.allSubscribers());
