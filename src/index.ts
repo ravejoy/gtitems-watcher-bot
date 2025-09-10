@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import { SqliteStore } from './storage/sqliteStore.js';
+import { SqliteStore } from './storage/sqlite-store.js';
 import { UserPrefs } from './domain/types.js';
 
 const store = new SqliteStore();
