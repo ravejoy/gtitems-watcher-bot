@@ -27,10 +27,15 @@ const BOT_TOKEN = process.env.BOT_TOKEN;
 if (!BOT_TOKEN) throw new Error('Missing BOT_TOKEN in .env');
 
 const store: Store = new RedisStore();
-export const bot = new Telegraf<MyContext>(BOT_TOKEN);
+export const bot = new Telegraf<MyContext>(BOT_TOKEN, {
+  handlerTimeout: Infinity,
+});
 
-// after: export const bot = new Telegraf<MyContext>(BOT_TOKEN);
-
+// global error catcher
+bot.catch((err, ctx) => {
+  logger.error({ err }, 'Unhandled error in Telegraf');
+  ctx.reply('⚠️ Unexpected error, but bot is still running.').catch(() => {});
+});
 const memorySession = new Map<number, SessionData>();
 
 bot.use(async (ctx, next) => {
