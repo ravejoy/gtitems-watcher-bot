@@ -1,4 +1,3 @@
-// src/services/scanner.ts
 import chardet from 'chardet';
 import * as cheerio from 'cheerio';
 import { XMLParser } from 'fast-xml-parser';
