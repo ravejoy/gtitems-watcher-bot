@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import { Telegraf, Context } from 'telegraf';
 import type { UserPrefs } from './domain/types.js';
+import { env } from './env.ts';
 import { buildMenu, itemsMenu } from './keyboards.js';
 import { logger } from './services/logger.js';
 import { scan, type Progress, type FoundSite } from './services/scanner.js';
@@ -23,13 +24,11 @@ interface MyContext extends Context {
   session?: SessionData;
 }
 
-const BOT_TOKEN = process.env.BOT_TOKEN;
-if (!BOT_TOKEN) throw new Error('Missing BOT_TOKEN in .env');
-
-const store: Store = new RedisStore();
-export const bot = new Telegraf<MyContext>(BOT_TOKEN, {
+export const bot = new Telegraf<MyContext>(env.BOT_TOKEN, {
   handlerTimeout: Infinity,
 });
+
+const store: Store = new RedisStore();
 
 // global error catcher
 bot.catch((err, ctx) => {

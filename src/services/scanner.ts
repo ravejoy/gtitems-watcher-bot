@@ -3,38 +3,32 @@ import * as cheerio from 'cheerio';
 import { XMLParser } from 'fast-xml-parser';
 import iconv from 'iconv-lite';
 import pLimit from 'p-limit';
+import { env } from '../env.ts';
 
 export type Progress = { done: number; total: number; matches: number };
 export type FoundSite = { url: string; siteId: string; items: string[] };
 
-const ORIGIN = process.env.BASE_URL ?? 'https://rpgtop.su';
+const ORIGIN = env.BASE_URL;
 const UA = 'Mozilla/5.0 (compatible; gtitems-watcher-bot/1.0)';
 const COMM_RE = /^\/comm(?:\/t\d+)?\/\d+\/\d+\.htm$/i;
+
+const ITEMS_VER = env.ITEMS_CGI_VER;
+const ITEMS_PATH_TPL = env.ITEMS_CGI_PATH_TEMPLATE;
 
 type ItemsXmlEntry = { id?: string | number | null; alt?: string | null; link?: string | null };
 type ItemsXml = { item?: { items?: ItemsXmlEntry | ItemsXmlEntry[] } | null };
 
 /* --------------------------- url helpers --------------------------- */
 
-function joinUrl(base: string, path: string): string {
-  const b = base.endsWith('/') ? base.slice(0, -1) : base;
-  const p = path.startsWith('/') ? path : `/${path}`;
-  return `${b}${p}`;
-}
-
 function ratingUrl(i: number): string {
   return `${ORIGIN}/p${i}.html`;
 }
 
 function itemsCgiUrl(siteId: string, page = 1): string {
-  const ver = process.env.ITEMS_CGI_VER ?? '2040';
-  const tpl =
-    process.env.ITEMS_CGI_PATH_TEMPLATE ??
-    '/cgi-bin/js/_item.cgi?act=list&ver={ver}&site={siteId}&page={page}';
-  return joinUrl(
-    ORIGIN,
-    tpl.replace('{ver}', ver).replace('{siteId}', siteId).replace('{page}', String(page)),
-  );
+  const path = ITEMS_PATH_TPL.replace('{ver}', ITEMS_VER)
+    .replace('{siteId}', siteId)
+    .replace('{page}', String(page));
+  return new URL(path, ORIGIN).toString();
 }
 
 /* ---------------------------- fetchers ---------------------------- */

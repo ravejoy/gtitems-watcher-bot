@@ -1,14 +1,15 @@
 import { Redis } from '@upstash/redis';
 import type { Store } from './store.js';
 import type { UserPrefs } from '../domain/types.js';
+import { env } from '../env.ts';
 
 export class RedisStore implements Store {
   private r: Redis;
   private idxKey = 'subs:index'; // set of userIds with subscribed=1
 
   constructor() {
-    const url = process.env.UPSTASH_REDIS_REST_URL;
-    const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+    const url = env.UPSTASH_REDIS_REST_URL;
+    const token = env.UPSTASH_REDIS_REST_TOKEN;
     if (!url || !token) throw new Error('Upstash Redis env vars are missing');
     this.r = new Redis({ url, token });
   }
