@@ -1,4 +1,8 @@
+import dotenv from 'dotenv';
 import { z } from 'zod';
+
+// load .env file into process.env
+dotenv.config();
 
 const schema = z.object({
   BASE_URL: z.string().url(),
