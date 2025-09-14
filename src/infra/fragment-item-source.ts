@@ -8,13 +8,12 @@ export class FragmentClient implements ItemSource {
   private readonly baseUrl: string;
   private readonly http: HttpClient;
 
-  constructor() {
+  constructor(http?: HttpClient) {
     this.baseUrl = env.BASE_URL.replace(/\/+$/, '');
-    this.http = new HttpClient({ referer: `${this.baseUrl}/` });
+    this.http = http ?? new HttpClient({ referer: `${this.baseUrl}/` });
   }
 
   async list(siteId: string): Promise<string> {
-    // find ver from reviews page
     const reviewsUrl = `${this.baseUrl}/comm/${siteId}/1.htm`;
     let html = '';
     try {

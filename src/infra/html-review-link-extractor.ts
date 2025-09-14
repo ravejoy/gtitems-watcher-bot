@@ -9,9 +9,9 @@ export class HtmlReviewLinkExtractor implements ReviewLinkExtractor {
   private readonly baseUrl: string;
   private readonly http: HttpClient;
 
-  constructor() {
+  constructor(http?: HttpClient) {
     this.baseUrl = env.BASE_URL.replace(/\/+$/, '');
-    this.http = new HttpClient();
+    this.http = http ?? new HttpClient();
   }
 
   async extract(page: number): Promise<Site[]> {
