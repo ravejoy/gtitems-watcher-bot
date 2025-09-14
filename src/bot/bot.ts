@@ -1,24 +1,24 @@
 import { Telegraf, Markup } from 'telegraf';
+import { message } from 'telegraf/filters';
 import type { PageScanner as IPageScanner } from '../domain/page-scanner.js';
 import { logger } from '../lib/logger.js';
 import { env } from '../lib/env.js';
 
 type ChatSettings = { pages: number };
-const chatSettings = new Map<number, ChatSettings>();
+const settings = new Map<number, ChatSettings>();
+const awaitingPagesInput = new Set<number>();
+const awaitingSearchInput = new Set<number>();
 
-function getSettings(chatId: number): ChatSettings {
-  const s = chatSettings.get(chatId);
-  if (s) return s;
-  const def = { pages: 1 };
-  chatSettings.set(chatId, def);
-  return def;
-}
-function setPages(chatId: number, pages: number) {
-  const clamped = Math.min(Math.max(Math.trunc(pages), 1), 10);
-  chatSettings.set(chatId, { pages: clamped });
-  return clamped;
-}
+const noPreview = { link_preview_options: { is_disabled: true as const } };
 
+function getPages(chatId: number) {
+  return settings.get(chatId)?.pages ?? 1;
+}
+function setPages(chatId: number, n: number) {
+  const pages = Math.max(1, Math.min(Math.trunc(n), 100));
+  settings.set(chatId, { pages });
+  return pages;
+}
 function chunkText(input: string, limit = 3500): string[] {
   if (input.length <= limit) return [input];
   const out: string[] = [];
@@ -33,148 +33,272 @@ function chunkText(input: string, limit = 3500): string[] {
   if (buf) out.push(buf.trimEnd());
   return out;
 }
-
-function mainMenu(pages: number) {
+function mainMenu(chatId: number) {
+  const pages = getPages(chatId);
   return Markup.inlineKeyboard([
-    [Markup.button.callback(`🔎 Scan (${pages} page${pages > 1 ? 's' : ''})`, 'scan_now')],
+    [Markup.button.callback('Scan', 'act_scan'), Markup.button.callback('Search', 'act_search')],
     [
-      Markup.button.callback('1', 'set_pages:1'),
-      Markup.button.callback('3', 'set_pages:3'),
-      Markup.button.callback('5', 'set_pages:5'),
-      Markup.button.callback('10', 'set_pages:10'),
+      Markup.button.callback(`Pages: ${pages} (set)`, 'act_set_pages'),
+      Markup.button.callback('Status', 'act_status'),
     ],
   ]);
 }
-
-// unified option to disable link previews (new Bot API)
-const noPreview = { link_preview_options: { is_disabled: true as const } };
 
 export function createBot(scanner: IPageScanner) {
   const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN);
 
   bot.start(async (ctx) => {
-    const chatId = ctx.chat?.id as number;
-    const pages = getSettings(chatId).pages;
-    const menu = mainMenu(pages);
-    await ctx.reply(
-      'Use /scan <pages?> or the buttons below. I will list review URLs that have items.',
-      { ...noPreview, reply_markup: menu.reply_markup },
-    );
+    const chatId = ctx.chat!.id;
+    const menu = mainMenu(chatId);
+    await ctx.reply('Choose an action:', { ...noPreview, reply_markup: menu.reply_markup });
   });
 
   bot.command('menu', async (ctx) => {
-    const chatId = ctx.chat?.id as number;
-    const pages = getSettings(chatId).pages;
-    const menu = mainMenu(pages);
-    await ctx.reply(`Current pages: ${pages}`, {
-      ...noPreview,
-      reply_markup: menu.reply_markup,
-    });
+    const chatId = ctx.chat!.id;
+    const menu = mainMenu(chatId);
+    await ctx.reply('Choose an action:', { ...noPreview, reply_markup: menu.reply_markup });
   });
 
   bot.command('setpages', async (ctx) => {
-    const chatId = ctx.chat?.id as number;
+    const chatId = ctx.chat!.id;
     const parts = (ctx.message?.text ?? '').trim().split(/\s+/);
     const n = Number(parts[1]);
-    if (!Number.isFinite(n)) {
-      return ctx.reply('Usage: /setpages <1..10>', noPreview);
-    }
+    if (!Number.isFinite(n)) return ctx.reply('Usage: /setpages <number>', noPreview);
     const pages = setPages(chatId, n);
-    const menu = mainMenu(pages);
-    await ctx.reply(`Pages set to ${pages}.`, {
+    const menu = mainMenu(chatId);
+    await ctx.reply(`Pages set to ${pages}.`, { ...noPreview, reply_markup: menu.reply_markup });
+  });
+
+  bot.command('scan', async (ctx) => {
+    const chatId = ctx.chat!.id;
+    const parts = (ctx.message?.text ?? '').trim().split(/\s+/);
+    const override = Number(parts[1]);
+    const pages = Number.isFinite(override) ? setPages(chatId, override) : getPages(chatId);
+    await performScan(bot, scanner, chatId, pages);
+  });
+
+  bot.command('search', async (ctx) => {
+    const chatId = ctx.chat!.id;
+    const q = (ctx.message?.text ?? '').slice('/search'.length).trim();
+    if (!q) return ctx.reply('Usage: /search <keyword1, keyword2 | keyword3>', noPreview);
+    await performSearch(bot, scanner, chatId, getPages(chatId), q);
+  });
+
+  // Actions
+  bot.action('act_scan', async (ctx) => {
+    const chatId = ctx.chat!.id;
+    await ctx.answerCbQuery();
+    await performScan(bot, scanner, chatId, getPages(chatId));
+  });
+
+  bot.action('act_search', async (ctx) => {
+    const chatId = ctx.chat!.id;
+    awaitingSearchInput.add(chatId);
+    await ctx.answerCbQuery();
+    await ctx.reply('Send search query (e.g., `nectar, туман | лён`). Multiple keywords allowed.', {
+      ...noPreview,
+      parse_mode: 'Markdown',
+    });
+  });
+
+  bot.action('act_set_pages', async (ctx) => {
+    const chatId = ctx.chat!.id;
+    awaitingPagesInput.add(chatId);
+    await ctx.answerCbQuery();
+    await ctx.reply('Send number of pages to scan (1..100):', noPreview);
+  });
+
+  bot.action('act_status', async (ctx) => {
+    const chatId = ctx.chat!.id;
+    await ctx.answerCbQuery();
+    const menu = mainMenu(chatId);
+    await ctx.reply(`Pages: ${getPages(chatId)}`, {
       ...noPreview,
       reply_markup: menu.reply_markup,
     });
   });
 
-  bot.command('scan', async (ctx) => {
-    const chatId = ctx.chat?.id as number;
-    const parts = (ctx.message?.text ?? '').trim().split(/\s+/);
-    const override = Number(parts[1]);
-    const pages = Number.isFinite(override)
-      ? setPages(chatId, override)
-      : getSettings(chatId).pages;
-    await performScan(chatId, pages);
-  });
+  // Handle awaited inputs (pages/search)
+  bot.on(message('text'), async (ctx, next) => {
+    const chatId = ctx.chat!.id;
+    const text = ctx.message.text.trim();
 
-  bot.action('scan_now', async (ctx) => {
-    const chatId = ctx.chat?.id as number;
-    const pages = getSettings(chatId).pages;
-    await ctx.answerCbQuery('Scanning…');
-    await performScan(chatId, pages);
-  });
+    if (awaitingPagesInput.has(chatId)) {
+      awaitingPagesInput.delete(chatId);
+      const n = Number(text);
+      if (!Number.isFinite(n)) return ctx.reply('Please send a number.', noPreview);
+      const pages = setPages(chatId, n);
+      const menu = mainMenu(chatId);
+      return ctx.reply(`Pages set to ${pages}.`, { ...noPreview, reply_markup: menu.reply_markup });
+    }
 
-  bot.action(/^set_pages:(\d+)$/, async (ctx) => {
-    const chatId = ctx.chat?.id as number;
-    const n = Number(ctx.match[1]);
-    const pages = setPages(chatId, n);
-    await ctx.answerCbQuery(`Pages set to ${pages}`);
-    const menu = mainMenu(pages);
-    await ctx.editMessageReplyMarkup(menu.reply_markup);
+    if (awaitingSearchInput.has(chatId)) {
+      awaitingSearchInput.delete(chatId);
+      return performSearch(bot, scanner, chatId, getPages(chatId), text);
+    }
+
+    return next();
   });
 
   bot.catch((err) => logger.error({ err }, 'bot error'));
+  return bot;
+}
 
-  async function performScan(chatId: number, pages: number) {
-    const send = (text: string) => bot.telegram.sendMessage(chatId, text, noPreview);
+// --- helpers ---
 
-    // progress message
-    const status = await send(`Scanning ${pages} page(s)… 0/${pages}`);
-    const statusMsgId = status.message_id;
+function parseKeywords(input: string): string[] {
+  return input
+    .split(/[|,]/)
+    .map((s) => s.trim().toLowerCase())
+    .filter(Boolean);
+}
 
-    const uniqueUrls = new Set<string>();
-    const results: { url: string; items: string[] }[] = [];
+async function performScan(bot: Telegraf, scanner: IPageScanner, chatId: number, pages: number) {
+  const status = await bot.telegram.sendMessage(chatId, `Scanning ${pages} page(s)… 0/${pages}`, {
+    ...noPreview,
+  });
+  const statusId = status.message_id;
 
-    for (let p = 1; p <= pages; p++) {
-      const sites = await scanner.scanPage(p);
+  const unique = new Set<string>();
+  const found: { url: string; items: string[] }[] = [];
 
-      for (const s of sites) {
-        if (!uniqueUrls.has(s.url)) uniqueUrls.add(s.url);
-        const names = (s.items ?? []).map((i) => i.name);
-        if (names.length > 0) results.push({ url: s.url, items: names });
+  let lastEdit = Date.now();
+
+  for (let p = 1; p <= pages; p++) {
+    const sites = await scanner.scanPage(p);
+
+    for (const s of sites) {
+      unique.add(s.url);
+      const names = (s.items ?? []).map((i) => i.name);
+      if (names.length > 0) found.push({ url: s.url, items: names });
+      // update progress every ~3s while page is running
+      if (Date.now() - lastEdit > 3000) {
+        lastEdit = Date.now();
+        try {
+          await bot.telegram.editMessageText(
+            chatId,
+            statusId,
+            undefined,
+            `Scanning ${pages} page(s)… ${p - 1}/${pages}\nChecked (unique): ${unique.size} • Found: ${found.length}`,
+            noPreview,
+          );
+        } catch {}
       }
-
-      // update progress after each page to avoid long silent periods
-      const progressText =
-        `Scanning ${pages} page(s)… ${p}/${pages}\n` +
-        `Checked (unique): ${uniqueUrls.size} • Found (with items): ${results.length}`;
-      try {
-        await bot.telegram.editMessageText(chatId, statusMsgId, undefined, progressText, noPreview);
-      } catch {
-        // ignore edit race conditions / rate limits
-      }
-    }
-
-    if (results.length === 0) {
-      try {
-        await bot.telegram.editMessageText(
-          chatId,
-          statusMsgId,
-          undefined,
-          `Done. Checked ${uniqueUrls.size} unique site(s). Found 0.`,
-          noPreview,
-        );
-      } catch {}
-      await send('No sites with items found.');
-      return;
-    }
-
-    const lines = results.map((r, i) => `${i + 1}. ${r.url} — ${r.items.join(', ')}`);
-    const payload = lines.join('\n');
-    for (const chunk of chunkText(payload)) {
-      await send(chunk);
     }
 
     try {
       await bot.telegram.editMessageText(
         chatId,
-        statusMsgId,
+        statusId,
         undefined,
-        `Done. Checked ${uniqueUrls.size} unique site(s). Found ${results.length}.`,
+        `Scanning ${pages} page(s)… ${p}/${pages}\nChecked (unique): ${unique.size} • Found: ${found.length}`,
         noPreview,
       );
     } catch {}
   }
 
-  return bot;
+  if (found.length === 0) {
+    try {
+      await bot.telegram.editMessageText(
+        chatId,
+        statusId,
+        undefined,
+        `Done. Checked ${unique.size} unique site(s). Found 0.`,
+        noPreview,
+      );
+    } catch {}
+    await bot.telegram.sendMessage(chatId, 'No sites with items found.', noPreview);
+    return;
+  }
+
+  const lines = found.map((r, i) => `${i + 1}. ${r.url} — ${r.items.join(', ')}`);
+  for (const chunk of chunkText(lines.join('\n'))) {
+    await bot.telegram.sendMessage(chatId, chunk, noPreview);
+  }
+
+  try {
+    await bot.telegram.editMessageText(
+      chatId,
+      statusId,
+      undefined,
+      `Done. Checked ${unique.size} unique site(s). Found ${found.length}.`,
+      noPreview,
+    );
+  } catch {}
+}
+
+async function performSearch(
+  bot: Telegraf,
+  scanner: IPageScanner,
+  chatId: number,
+  pages: number,
+  query: string,
+) {
+  const keys = parseKeywords(query);
+  if (keys.length === 0) {
+    await bot.telegram.sendMessage(chatId, 'No keywords provided.', noPreview);
+    return;
+  }
+
+  const status = await bot.telegram.sendMessage(
+    chatId,
+    `Searching ${pages} page(s) for: ${keys.join(', ')}… 0/${pages}`,
+    noPreview,
+  );
+  const statusId = status.message_id;
+
+  const unique = new Set<string>();
+  const matches: { url: string; items: string[] }[] = [];
+
+  for (let p = 1; p <= pages; p++) {
+    const sites = await scanner.scanPage(p);
+
+    for (const s of sites) {
+      unique.add(s.url);
+      const names = (s.items ?? []).map((i) => i.name);
+      const filtered = names.filter((n) => keys.some((k) => n.toLowerCase().includes(k)));
+      if (filtered.length > 0) {
+        matches.push({ url: s.url, items: filtered });
+      }
+    }
+
+    try {
+      await bot.telegram.editMessageText(
+        chatId,
+        statusId,
+        undefined,
+        `Searching ${pages} page(s) for: ${keys.join(', ')}… ${p}/${pages}\nChecked (unique): ${unique.size} • Matches: ${matches.length}`,
+        noPreview,
+      );
+    } catch {}
+  }
+
+  if (matches.length === 0) {
+    try {
+      await bot.telegram.editMessageText(
+        chatId,
+        statusId,
+        undefined,
+        `Done. Checked ${unique.size} unique site(s). Matches: 0.`,
+        noPreview,
+      );
+    } catch {}
+    await bot.telegram.sendMessage(chatId, 'No matches found.', noPreview);
+    return;
+  }
+
+  const lines = matches.map((r, i) => `${i + 1}. ${r.url} — ${r.items.join(', ')}`);
+  for (const chunk of chunkText(lines.join('\n'))) {
+    await bot.telegram.sendMessage(chatId, chunk, noPreview);
+  }
+
+  try {
+    await bot.telegram.editMessageText(
+      chatId,
+      statusId,
+      undefined,
+      `Done. Checked ${unique.size} unique site(s). Matches: ${matches.length}.`,
+      noPreview,
+    );
+  } catch {}
 }
