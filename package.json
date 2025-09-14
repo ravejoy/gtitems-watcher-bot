@@ -24,6 +24,7 @@
   "homepage": "https://github.com/ravejoy/gtitems-watcher-bot#readme",
   "description": "",
   "devDependencies": {
+    "@types/cheerio": "^0.22.35",
     "@types/node": "^24.4.0",
     "@typescript-eslint/eslint-plugin": "^8.43.0",
     "@typescript-eslint/parser": "^8.43.0",
@@ -36,7 +37,10 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
+    "cheerio": "^1.1.2",
     "dotenv": "^17.2.2",
+    "got": "^14.4.8",
+    "iconv-lite": "^0.7.0",
     "pino": "^9.9.5",
     "zod": "^4.1.8"
   }
