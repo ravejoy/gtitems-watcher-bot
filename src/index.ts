@@ -2,7 +2,7 @@ import { PageScanner } from './core/services/site-scan-service.js';
 import { HtmlReviewLinkExtractor } from './infra/html-review-link-extractor.js';
 import { FragmentClient } from './infra/fragment-item-source.js';
 import { XmlFragmentParser } from './infra/xml-fragment-item-parser.js';
-import { createBot } from './bot/bot.js';
+import { createBot } from './bot/entry.js';
 import { logger } from './lib/logger.js';
 
 const main = async () => {
