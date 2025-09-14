@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { HttpClient } from '../src/infra/http-client.js';
-import { getEnv, resetEnv } from '../src/lib/env.js';
+import { HttpClient } from '../../src/infra/http-client.js';
+import { getEnv, resetEnv } from '../../src/lib/env.js';
 
 class SequenceHttp extends HttpClient {
   constructor(private responses: string[]) {
@@ -34,7 +34,7 @@ beforeEach(() => {
 
 describe('FragmentClient', () => {
   it('fetches review page, extracts ver, then returns items fragment', async () => {
-    const { FragmentClient } = await import('../src/infra/fragment-item-source.js');
+    const { FragmentClient } = await import('../../src/infra/fragment-item-source.js');
 
     const http = new SequenceHttp([REVIEW_HTML, FRAGMENT_XML]);
     const client = new FragmentClient(http);

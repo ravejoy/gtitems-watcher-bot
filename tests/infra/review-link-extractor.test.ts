@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { HttpClient } from '../src/infra/http-client.js';
-import { getEnv, resetEnv } from '../src/lib/env.js';
+import { HttpClient } from '../../src/infra/http-client.js';
+import { getEnv, resetEnv } from '../../src/lib/env.js';
 
 // Fake HttpClient to return fixture HTML
 class FakeHttp extends HttpClient {
@@ -31,7 +31,9 @@ beforeEach(() => {
 
 describe('HtmlReviewLinkExtractor', () => {
   it('extracts absolute review links and ids', async () => {
-    const { HtmlReviewLinkExtractor } = await import('../src/infra/html-review-link-extractor.js');
+    const { HtmlReviewLinkExtractor } = await import(
+      '../../src/infra/html-review-link-extractor.js'
+    );
 
     const extractor = new HtmlReviewLinkExtractor(new FakeHttp(LIST_HTML));
     const sites = await extractor.extract(1);
