@@ -1,8 +1,10 @@
+import { logger } from './lib/logger.js';
+
 const main = async () => {
-  console.log('gtitems-watcher-bot bootstrap OK');
+  logger.info('gtitems-watcher-bot bootstrap OK');
 };
 
 main().catch((err) => {
-  console.error('Fatal error:', err);
+  logger.error(err, 'Fatal error');
   process.exit(1);
 });
