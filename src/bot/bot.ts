@@ -57,7 +57,7 @@ function mainMenu(chatId: number) {
 // ---- bot ----
 export function createBot(scanner: IPageScanner) {
   const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN, {
-    handlerTimeout: 0, // disable 90s telegraf timeout (long scans)
+    handlerTimeout: 10 * 60_000, // disable 90s telegraf timeout (long scans)
   });
 
   bot.start(async (ctx) => {
