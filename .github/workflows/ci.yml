@@ -1,0 +1,34 @@
+name: ci
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Use Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install
+        run: npm ci
+
+      - name: Lint
+        run: npm run lint --if-present
+
+      - name: Test
+        run: npm run test:cov
+        env:
+          # minimal env for tests; they use getEnv(overrides) anyway, but some modules might import logger
+          BASE_URL: https://example.com
+          TELEGRAM_BOT_TOKEN: TEST
+          LOG_LEVEL: silent
+          NODE_ENV: test
