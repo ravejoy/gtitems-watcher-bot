@@ -1,6 +1,7 @@
 import { Telegraf, Markup } from 'telegraf';
 import { message } from 'telegraf/filters';
 import type { PageScanner as IPageScanner } from '../domain/page-scanner.js';
+import { parseKeywords } from '../core/utils/search.js';
 import { logger } from '../lib/logger.js';
 import { env } from '../lib/env.js';
 
@@ -34,13 +35,6 @@ function chunkText(input: string, limit = 3500): string[] {
   }
   if (buf) out.push(buf.trimEnd());
   return out;
-}
-
-function parseKeywords(input: string): string[] {
-  return input
-    .split(/[|,]/)
-    .map((s) => s.trim().toLowerCase())
-    .filter(Boolean);
 }
 
 function mainMenu(chatId: number) {
