@@ -9,5 +9,9 @@ dist/
 .vscode/
 .idea/
 
-# OS
+#OS
 Thumbs.db
+
+
+coverage/
+.vitest/
