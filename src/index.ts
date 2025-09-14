@@ -2,28 +2,27 @@ import { PageScanner } from './core/services/site-scan-service.js';
 import { HtmlReviewLinkExtractor } from './infra/html-review-link-extractor.js';
 import { FragmentClient } from './infra/fragment-item-source.js';
 import { XmlFragmentParser } from './infra/xml-fragment-item-parser.js';
+import { createBot } from './bot/bot.js';
 import { logger } from './lib/logger.js';
 
 const main = async () => {
-  const page = Number(process.env.SCAN_PAGE ?? '1');
-
   const scanner = new PageScanner(
     new HtmlReviewLinkExtractor(),
     new FragmentClient(),
     new XmlFragmentParser(),
   );
 
-  const sites = await scanner.scanPage(page);
+  const bot = createBot(scanner);
+  await bot.launch();
+  logger.info('Telegram bot is up');
 
-  // keep only sites that have at least one item
-  const withItems = sites.filter((s) => (s.items?.length ?? 0) > 0);
-
-  withItems.forEach((s, i) => {
-    const items = (s.items ?? []).map((x) => x.name);
-    console.log(`${i + 1}. ${s.url} — ${items.join(', ')}`);
-  });
-
-  logger.info({ total: withItems.length }, 'Done');
+  const shutdown = async () => {
+    logger.info('Shutting down…');
+    await bot.stop();
+    process.exit(0);
+  };
+  process.once('SIGINT', shutdown);
+  process.once('SIGTERM', shutdown);
 };
 
 main().catch((err) => {
