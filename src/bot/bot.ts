@@ -3,7 +3,7 @@ import { message } from 'telegraf/filters';
 import type { PageScanner as IPageScanner } from '../domain/page-scanner.js';
 import { parseKeywords } from '../core/utils/search.js';
 import { logger } from '../lib/logger.js';
-import { env } from '../lib/env.js';
+import { getEnv } from '../lib/env.js';
 
 // ---- per-chat settings ----
 type ChatSettings = { pages: number };
@@ -50,7 +50,7 @@ function mainMenu(chatId: number) {
 
 // ---- bot ----
 export function createBot(scanner: IPageScanner) {
-  const bot = new Telegraf(env.TELEGRAM_BOT_TOKEN, {
+  const bot = new Telegraf(getEnv().TELEGRAM_BOT_TOKEN, {
     handlerTimeout: 10 * 60_000, // disable 90s telegraf timeout (long scans)
   });
 

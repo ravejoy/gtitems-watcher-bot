@@ -1,7 +1,7 @@
 import * as cheerio from 'cheerio';
 import type { ItemSource } from '../core/ports/item-source.js';
 import { HttpClient } from './http-client.js';
-import { env } from '../lib/env.js';
+import { getEnv } from '../lib/env.js';
 import { logger } from '../lib/logger.js';
 
 export class FragmentClient implements ItemSource {
@@ -9,7 +9,7 @@ export class FragmentClient implements ItemSource {
   private readonly http: HttpClient;
 
   constructor(http?: HttpClient) {
-    this.baseUrl = env.BASE_URL.replace(/\/+$/, '');
+    this.baseUrl = getEnv().BASE_URL.replace(/\/+$/, '');
     this.http = http ?? new HttpClient({ referer: `${this.baseUrl}/` });
   }
 
