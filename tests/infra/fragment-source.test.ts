@@ -34,7 +34,7 @@ beforeEach(() => {
 
 describe('FragmentClient', () => {
   it('fetches review page, extracts ver, then returns items fragment', async () => {
-    const { FragmentClient } = await import('../../src/infra/fragment-item-source.js');
+    const { FragmentClient } = await import('../../src/infra/fragment-source.js');
 
     const http = new SequenceHttp([REVIEW_HTML, FRAGMENT_XML]);
     const client = new FragmentClient(http);

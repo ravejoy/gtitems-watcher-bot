@@ -31,9 +31,7 @@ beforeEach(() => {
 
 describe('HtmlReviewLinkExtractor', () => {
   it('extracts absolute review links and ids', async () => {
-    const { HtmlReviewLinkExtractor } = await import(
-      '../../src/infra/html-review-link-extractor.js'
-    );
+    const { HtmlReviewLinkExtractor } = await import('../../src/infra/review-link-extractor.js');
 
     const extractor = new HtmlReviewLinkExtractor(new FakeHttp(LIST_HTML));
     const sites = await extractor.extract(1);

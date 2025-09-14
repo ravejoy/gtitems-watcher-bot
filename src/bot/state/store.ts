@@ -26,3 +26,9 @@ export function isAwaitingSearch(id: number) {
 export function setAwaitingSearch(id: number, v: boolean) {
   v ? awaitingSearchInput.add(id) : awaitingSearchInput.delete(id);
 }
+
+export function resetStore(): void {
+  settings.clear();
+  awaitingPagesInput.clear();
+  awaitingSearchInput.clear();
+}

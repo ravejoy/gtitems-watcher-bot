@@ -6,11 +6,11 @@ import {
   isAwaitingSearch,
   setAwaitingPages,
   setAwaitingSearch,
-  setPages,
 } from '../state/store.js';
 import { performSearch } from './search.js';
 import type { PageScanner as IPageScanner } from '../../domain/page-scanner.js';
 import { nextStepsText } from '../ui/text.js';
+import { applyPages } from './pages.js';
 
 export function wireInputs(bot: Telegraf, scanner: IPageScanner) {
   bot.action('act_set_pages', async (ctx) => {
@@ -41,11 +41,10 @@ export function wireInputs(bot: Telegraf, scanner: IPageScanner) {
 
     if (isAwaitingPages(chatId)) {
       setAwaitingPages(chatId, false);
-      const n = Number(text);
-      if (!Number.isFinite(n)) return safeSend(bot, chatId, 'Please send a number.', noPreview);
-      const pages = setPages(chatId, n);
-      await safeSend(bot, chatId, `Pages set to ${pages}.`, noPreview);
-      await safeSend(bot, chatId, nextStepsText(), noPreview);
+      const msg = applyPages(chatId, text);
+      await safeSend(bot, chatId, msg, noPreview);
+      if (!msg.startsWith('Please'))
+        await safeSend(bot, chatId, 'Type /start to continue', noPreview);
       return;
     }
 

@@ -3,7 +3,21 @@ import type { PageScanner as IPageScanner } from '../../domain/page-scanner.js';
 import { parseKeywords } from '../../core/utils/search.js';
 import { chunkText } from '../util/chunk.js';
 import { noPreview, safeEdit, safeSend, sleep } from '../util/messaging.js';
-import { nextStepsText } from '../ui/text.js';
+
+const NEXT_TIP = 'Type /start to continue';
+
+function normalize(s: string) {
+  return s.toLowerCase().replace(/ё/g, 'е');
+}
+
+export function filterNamesByKeys(names: string[], keys: string[]): string[] {
+  if (!keys.length || !names.length) return [];
+  const ks = keys.map(normalize);
+  return names.filter((n) => {
+    const x = normalize(n);
+    return ks.some((k) => x.includes(k));
+  });
+}
 
 export async function performSearch(
   bot: Telegraf,
@@ -15,7 +29,7 @@ export async function performSearch(
   const keys = parseKeywords(query);
   if (keys.length === 0) {
     await safeSend(bot, chatId, 'No keywords provided.', noPreview);
-    await safeSend(bot, chatId, nextStepsText(), noPreview);
+    await safeSend(bot, chatId, NEXT_TIP, noPreview);
     return;
   }
 
@@ -35,7 +49,7 @@ export async function performSearch(
     for (const s of sites) {
       unique.add(s.url);
       const names = (s.items ?? []).map((i) => i.name);
-      const filtered = names.filter((n) => keys.some((k) => n.toLowerCase().includes(k)));
+      const filtered = filterNamesByKeys(names, keys);
       if (filtered.length > 0) matches.push({ url: s.url, items: filtered });
     }
   });
@@ -66,7 +80,7 @@ export async function performSearch(
       );
     }
     await safeSend(bot, chatId, 'No matches found.', noPreview);
-    await safeSend(bot, chatId, nextStepsText(), noPreview);
+    await safeSend(bot, chatId, NEXT_TIP, noPreview);
     return;
   }
 
@@ -85,5 +99,5 @@ export async function performSearch(
       noPreview,
     );
   }
-  await safeSend(bot, chatId, nextStepsText(), noPreview);
+  await safeSend(bot, chatId, NEXT_TIP, noPreview);
 }

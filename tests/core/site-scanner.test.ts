@@ -44,7 +44,7 @@ beforeEach(() => {
 
 describe('ScanService', () => {
   it('deduplicates by id and attaches parsed items', async () => {
-    const { PageScanner } = await import('../../src/core/services/site-scan-service.js');
+    const { PageScanner } = await import('../../src/core/services/site-scanner.js');
 
     const svc = new PageScanner(new FakeLinks(), new FakeSource(), new FakeParser());
     const result = await svc.scanPage(1);
