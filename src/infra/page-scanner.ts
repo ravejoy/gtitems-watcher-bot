@@ -23,60 +23,103 @@ export class RpgtopPageScanner implements PageScanner {
 
     const sites: Site[] = [];
 
-    // Review links look like /comm/<id>/<n>.htm
     $('a[href*="/comm/"]').each((_, el) => {
-      const href = $(el).attr('href');
-      if (!href) return;
+      const raw = $(el).attr('href');
+      if (!raw) return;
 
-      const abs = this.toAbsoluteUrl(href);
+      const abs = this.normalizeReviewUrl(this.toAbsoluteUrl(raw));
       const id = this.extractCommId(abs);
       if (!id) return;
 
-      const container = $(el).closest('tr, .trow, .site, .block, div, li');
-      const nameCandidate =
-        container.find('a[href^="http"]').first().text().trim() ||
-        container.find('b, strong, .title').first().text().trim() ||
-        $(el).text().trim();
-
-      const name = nameCandidate || `Site ${id}`;
+      const name =
+        $(el).text().trim() ||
+        $(el)
+          .closest('tr, .trow, .site, .block, div, li')
+          .find('b, strong, .title, a[href^="http"]')
+          .first()
+          .text()
+          .trim() ||
+        `Site ${id}`;
 
       sites.push({ id, name, url: abs });
     });
 
-    return sites;
+    const seen = new Set<string>();
+    return sites.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
   }
 
   async scanSiteReviews(site: Site): Promise<Site> {
     logger.debug({ site: site.url }, 'Scanning site reviews');
-
-    const itemCount = await this.fetchItemsCount(site.id);
-
-    return {
-      ...site,
-      hasItems: itemCount > 0,
-      items: itemCount
-        ? Array.from({ length: itemCount }, (_, i) => ({
-            id: `${site.id}-${i + 1}`,
-            name: 'Item',
-          }))
-        : [],
-    };
+    const items = await this.fetchItemsList(site.id);
+    return { ...site, hasItems: items.length > 0, items };
   }
 
-  private async fetchItemsCount(siteId: string): Promise<number> {
-    const url = `${this.baseUrl}/cgi-bin/js/_item.cgi?act=list&site=${siteId}&page=1`;
-    const body = await this.fetchCp1251(url);
+  private async fetchItemsList(siteId: string) {
+    // try with multiple "ver" values then without
+    const candidates = [
+      `${this.baseUrl}/cgi-bin/js/_item.cgi?act=list&ver=2048&site=${siteId}&page=1`,
+      `${this.baseUrl}/cgi-bin/js/_item.cgi?act=list&ver=2040&site=${siteId}&page=1`,
+      `${this.baseUrl}/cgi-bin/js/_item.cgi?act=list&ver=2030&site=${siteId}&page=1`,
+      `${this.baseUrl}/cgi-bin/js/_item.cgi?act=list&site=${siteId}&page=1`,
+    ];
 
-    const $ = cheerio.load(body);
+    for (const u of candidates) {
+      const body = await this.fetchCp1251(u);
 
-    const anchors = $('a[href^="/cgi-bin/"][href*=".cgi?a="]');
-    if (anchors.length > 0) return anchors.length;
+      const parsed = this.parseItemsFromFragment(body, siteId);
+      if (parsed.length > 0) return parsed;
 
-    const raw = body;
-    const jsMatches = raw.match(/item_get\(/g);
-    if (jsMatches) return jsMatches.length;
+      // last resort: quick peek to help debugging in logs (short preview only)
+      logger.debug({ siteId, preview: body.slice(0, 120) }, 'No items parsed from fragment');
+    }
 
-    return 0;
+    return [];
+  }
+
+  private parseItemsFromFragment(fragment: string, siteId: string) {
+    const $ = cheerio.load(fragment, { xmlMode: true });
+
+    const fromAlt = $('items > alt')
+      .map((i, el) => {
+        const name = $(el).text().trim();
+        if (!name) return null;
+        return { id: `${siteId}-${i + 1}`, name };
+      })
+      .get()
+      .filter(Boolean) as { id: string; name: string }[];
+
+    if (fromAlt.length) return fromAlt;
+
+    const anyAlt = $('alt')
+      .map((i, el) => {
+        const name = $(el).text().trim();
+        if (!name) return null;
+        return { id: `${siteId}-${i + 1}`, name };
+      })
+      .get()
+      .filter(Boolean) as { id: string; name: string }[];
+
+    if (anyAlt.length) return anyAlt;
+
+    const anchors = $(
+      'a[href^="/cgi-bin/g.cgi?a="], a[href^="/cgi-bin/m.cgi?a="], a[href^="/cgi-bin/"]',
+    );
+    const fromAnchors = anchors
+      .map((i, el) => {
+        const a = $(el);
+        const title = (a.attr('title') || '').trim();
+        const text = a.text().trim();
+        const name = title || text;
+        if (!name) return null;
+        return { id: `${siteId}-${i + 1}`, name };
+      })
+      .get()
+      .filter(Boolean) as { id: string; name: string }[];
+
+    if (fromAnchors.length) return fromAnchors;
+
+    const matches = fragment.match(/item_get\([^)]*\)/g) || [];
+    return matches.map((_, i) => ({ id: `${siteId}-${i + 1}`, name: 'Item' }));
   }
 
   private async fetchCp1251(url: string): Promise<string> {
@@ -89,6 +132,7 @@ export class RpgtopPageScanner implements PageScanner {
           'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36',
         accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
         'accept-language': 'ru,en;q=0.9',
+        referer: `${this.baseUrl}/`, // some endpoints behave better with a referer
       },
       decompress: true,
     });
@@ -97,6 +141,10 @@ export class RpgtopPageScanner implements PageScanner {
 
   private normalizeBaseUrl(u: string): string {
     return u.replace(/\/+$/, '');
+  }
+
+  private normalizeReviewUrl(u: string): string {
+    return u.split('#')[0].replace(/([^:]\/)\/+/g, '$1');
   }
 
   private toAbsoluteUrl(href: string): string {
