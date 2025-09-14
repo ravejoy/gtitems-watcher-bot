@@ -14,8 +14,9 @@ export class PageScanner implements IPageScanner {
   async scanPage(page: number): Promise<Site[]> {
     const sites = await this.links.extract(page);
 
+    // dedupe by site id (canonical)
     const seen = new Set<string>();
-    const unique = sites.filter((s) => (seen.has(s.url) ? false : (seen.add(s.url), true)));
+    const unique = sites.filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)));
 
     const result: Site[] = [];
     for (const site of unique) {
