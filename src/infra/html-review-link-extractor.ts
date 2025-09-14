@@ -3,6 +3,7 @@ import type { ReviewLinkExtractor } from '../core/ports/review-link-extractor.js
 import type { Site } from '../domain/site.js';
 import { HttpClient } from './http-client.js';
 import { env } from '../lib/env.js';
+import { logger } from '../lib/logger.js';
 
 export class HtmlReviewLinkExtractor implements ReviewLinkExtractor {
   private readonly baseUrl: string;
@@ -15,13 +16,21 @@ export class HtmlReviewLinkExtractor implements ReviewLinkExtractor {
 
   async extract(page: number): Promise<Site[]> {
     const url = page === 1 ? `${this.baseUrl}/` : `${this.baseUrl}/p${page}.html`;
-    const html = await this.http.getCp1251(url);
-    const $ = cheerio.load(html);
+    let html = '';
+    try {
+      html = await this.http.getCp1251(url);
+    } catch (e) {
+      logger.warn({ err: e, url }, 'failed to fetch rating page');
+      return [];
+    }
 
+    const $ = cheerio.load(html);
     const sites: Site[] = [];
+
     $('a[href*="/comm/"]').each((_, el) => {
       const raw = $(el).attr('href');
       if (!raw) return;
+
       const abs = this.normalize(this.abs(raw));
       const id = this.extractId(abs);
       if (!id) return;
@@ -52,7 +61,6 @@ export class HtmlReviewLinkExtractor implements ReviewLinkExtractor {
 
   private normalize(u: string): string {
     return u.split('#')[0].replace(/([^:]\/)\/+/g, '$1');
-    // removes #addcomm and collapses //
   }
 
   private extractId(url: string): string | null {

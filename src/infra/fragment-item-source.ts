@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio';
 import type { ItemSource } from '../core/ports/item-source.js';
 import { HttpClient } from './http-client.js';
 import { env } from '../lib/env.js';
+import { logger } from '../lib/logger.js';
 
 export class FragmentClient implements ItemSource {
   private readonly baseUrl: string;
@@ -13,9 +14,16 @@ export class FragmentClient implements ItemSource {
   }
 
   async list(siteId: string): Promise<string> {
-    // resolve ver from the reviews page <script src="/js/item_XXXX.js?ver=NNNN">
+    // find ver from reviews page
     const reviewsUrl = `${this.baseUrl}/comm/${siteId}/1.htm`;
-    const html = await this.http.getCp1251(reviewsUrl);
+    let html = '';
+    try {
+      html = await this.http.getCp1251(reviewsUrl);
+    } catch (e) {
+      logger.warn({ err: e, reviewsUrl }, 'failed to fetch review page');
+      return '';
+    }
+
     const $ = cheerio.load(html);
     const scriptSrc =
       $('script[src^="/js/item_"]').attr('src') || $('script[src^="/js/_item"]').attr('src') || '';
@@ -31,9 +39,14 @@ export class FragmentClient implements ItemSource {
       : [`${this.baseUrl}/cgi-bin/js/_item.cgi?act=list&site=${siteId}&page=1`];
 
     for (const u of urls) {
-      const body = await this.http.getCp1251(u);
-      if (body && body.length > 0) return body;
+      try {
+        const body = await this.http.getCp1251(u);
+        if (body) return body;
+      } catch (e) {
+        logger.warn({ err: e, url: u, siteId }, 'failed to fetch items fragment');
+      }
     }
+
     return '';
   }
 }
