@@ -36,6 +36,8 @@
     "typescript": "^5.9.2"
   },
   "dependencies": {
-    "pino": "^9.9.5"
+    "dotenv": "^17.2.2",
+    "pino": "^9.9.5",
+    "zod": "^4.1.8"
   }
 }
