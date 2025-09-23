@@ -2,7 +2,13 @@ import { Telegraf } from 'telegraf';
 import type { PageScanner as IPageScanner } from '../../domain/page-scanner.js';
 import { chunkText } from '../util/chunk.js';
 import { noPreview, safeEdit, safeSend, sleep } from '../util/messaging.js';
-import { nextStepsText } from '../ui/text.js';
+
+const NEXT_TIP = 'Type /start to continue';
+
+function normalizeUrl(u: string): string {
+  const hash = u.indexOf('#');
+  return hash >= 0 ? u.slice(0, hash) : u;
+}
 
 export async function performScan(
   bot: Telegraf,
@@ -13,15 +19,19 @@ export async function performScan(
   const status = await safeSend(bot, chatId, `Scanning ${pages} page(s)… 0/${pages}`, noPreview);
   const statusId = status?.message_id;
 
-  const unique = new Set<string>();
-  const found: { url: string; items: string[] }[] = [];
+  // Map<url, items[]>
+  const acc = new Map<string, string[]>();
 
   const tasks = Array.from({ length: pages }, (_, i) => i + 1).map(async (p) => {
     const sites = await scanner.scanPage(p);
     for (const s of sites) {
-      unique.add(s.url);
+      const url = normalizeUrl(s.url);
+      if (acc.has(url)) continue;
+
       const names = (s.items ?? []).map((i) => i.name);
-      if (names.length > 0) found.push({ url: s.url, items: names });
+      if (names.length === 0) continue;
+
+      acc.set(url, names);
     }
   });
 
@@ -34,41 +44,31 @@ export async function performScan(
         bot,
         chatId,
         statusId,
-        `Scanning ${pages} page(s)… ${completed}/${pages}\nChecked (unique): ${unique.size} • Found: ${found.length}`,
+        `Scanning ${pages} page(s)… ${completed}/${pages}\nUnique URLs with items: ${acc.size}`,
         noPreview,
       );
     }
   }
 
-  if (found.length === 0) {
+  if (acc.size === 0) {
     if (statusId) {
-      await safeEdit(
-        bot,
-        chatId,
-        statusId,
-        `Done. Checked ${unique.size} unique site(s). Found 0.`,
-        noPreview,
-      );
+      await safeEdit(bot, chatId, statusId, `Done. Unique URLs with items: 0.`, noPreview);
     }
     await safeSend(bot, chatId, 'No sites with items found.', noPreview);
-    await safeSend(bot, chatId, nextStepsText(), noPreview);
+    await safeSend(bot, chatId, NEXT_TIP, noPreview);
     return;
   }
 
-  const lines = found.map((r, i) => `${i + 1}. ${r.url} — ${r.items.join(', ')}`);
-  for (const chunk of chunkText(lines.join('\n'))) {
+  const results = [...acc.entries()].map(
+    ([url, items], i) => `${i + 1}. ${url} — ${items.join(', ')}`,
+  );
+  for (const chunk of chunkText(results.join('\n'))) {
     await safeSend(bot, chatId, chunk, noPreview);
     await sleep(250);
   }
 
   if (statusId) {
-    await safeEdit(
-      bot,
-      chatId,
-      statusId,
-      `Done. Checked ${unique.size} unique site(s). Found ${found.length}.`,
-      noPreview,
-    );
+    await safeEdit(bot, chatId, statusId, `Done. Unique URLs with items: ${acc.size}.`, noPreview);
   }
-  await safeSend(bot, chatId, nextStepsText(), noPreview);
+  await safeSend(bot, chatId, NEXT_TIP, noPreview);
 }

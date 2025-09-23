@@ -6,6 +6,11 @@ import { noPreview, safeEdit, safeSend, sleep } from '../util/messaging.js';
 
 const NEXT_TIP = 'Type /start to continue';
 
+function normalizeUrl(u: string): string {
+  const hash = u.indexOf('#');
+  return hash >= 0 ? u.slice(0, hash) : u;
+}
+
 function normalize(s: string) {
   return s.toLowerCase().replace(/ё/g, 'е');
 }
@@ -41,16 +46,20 @@ export async function performSearch(
   );
   const statusId = status?.message_id;
 
-  const unique = new Set<string>();
-  const matches: { url: string; items: string[] }[] = [];
+  // Map<url, items[]>
+  const acc = new Map<string, string[]>();
 
   const tasks = Array.from({ length: pages }, (_, i) => i + 1).map(async (p) => {
     const sites = await scanner.scanPage(p);
     for (const s of sites) {
-      unique.add(s.url);
+      const url = normalizeUrl(s.url);
+      if (acc.has(url)) continue;
+
       const names = (s.items ?? []).map((i) => i.name);
       const filtered = filterNamesByKeys(names, keys);
-      if (filtered.length > 0) matches.push({ url: s.url, items: filtered });
+      if (filtered.length === 0) continue;
+
+      acc.set(url, filtered);
     }
   });
 
@@ -63,41 +72,31 @@ export async function performSearch(
         bot,
         chatId,
         statusId,
-        `Searching ${pages} page(s) for: ${keys.join(', ')}… ${completed}/${pages}\nChecked (unique): ${unique.size} • Matches: ${matches.length}`,
+        `Searching ${pages} page(s) for: ${keys.join(', ')}… ${completed}/${pages}\nUnique URLs matched: ${acc.size}`,
         noPreview,
       );
     }
   }
 
-  if (matches.length === 0) {
+  if (acc.size === 0) {
     if (statusId) {
-      await safeEdit(
-        bot,
-        chatId,
-        statusId,
-        `Done. Checked ${unique.size} unique site(s). Matches: 0.`,
-        noPreview,
-      );
+      await safeEdit(bot, chatId, statusId, `Done. Unique URLs matched: 0.`, noPreview);
     }
     await safeSend(bot, chatId, 'No matches found.', noPreview);
     await safeSend(bot, chatId, NEXT_TIP, noPreview);
     return;
   }
 
-  const lines = matches.map((r, i) => `${i + 1}. ${r.url} — ${r.items.join(', ')}`);
-  for (const chunk of chunkText(lines.join('\n'))) {
+  const results = [...acc.entries()].map(
+    ([url, items], i) => `${i + 1}. ${url} — ${items.join(', ')}`,
+  );
+  for (const chunk of chunkText(results.join('\n'))) {
     await safeSend(bot, chatId, chunk, noPreview);
     await sleep(250);
   }
 
   if (statusId) {
-    await safeEdit(
-      bot,
-      chatId,
-      statusId,
-      `Done. Checked ${unique.size} unique site(s). Matches: ${matches.length}.`,
-      noPreview,
-    );
+    await safeEdit(bot, chatId, statusId, `Done. Unique URLs matched: ${acc.size}.`, noPreview);
   }
   await safeSend(bot, chatId, NEXT_TIP, noPreview);
 }
