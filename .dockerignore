@@ -1,0 +1,25 @@
+# Ignore node modules (always reinstall in container)
+node_modules
+npm-debug.log
+yarn-error.log
+pnpm-debug.log
+
+# Build artifacts
+dist
+coverage
+.vitest
+
+# Git / CI
+.git
+.github
+
+# Env files (we inject via Render dashboard)
+.env
+.env.local
+.env.*.local
+
+# Editor junk
+.vscode
+.idea
+.DS_Store
+Thumbs.db
