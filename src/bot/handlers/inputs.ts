@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf';
-import { noPreview, safeSend } from '../util/messaging.js';
+import { noPreview, safeSend } from '../utils/messaging.js';
 import {
   getPages,
   isAwaitingPages,

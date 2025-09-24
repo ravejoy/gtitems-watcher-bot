@@ -1,8 +1,8 @@
 import { Telegraf } from 'telegraf';
 import type { PageScanner as IPageScanner } from '../../domain/page-scanner.js';
 import { parseKeywords, filterNamesByKeys } from '../../core/utils/search.js';
-import { chunkText } from '../util/chunk.js';
-import { noPreview, safeEdit, safeSend, sleep } from '../util/messaging.js';
+import { chunkText } from '../utils/chunk.js';
+import { noPreview, safeEdit, safeSend, sleep } from '../utils/messaging.js';
 import { normalizeUrl } from '../../core/utils/url.js';
 import { mainMenu } from '../ui/menu.js';
 
