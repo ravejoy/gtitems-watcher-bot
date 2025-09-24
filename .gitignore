@@ -1,17 +1,27 @@
-# Node / TS
+# Node / TypeScript
 node_modules/
 dist/
 *.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+.eslintcache
+
+# Tests / Coverage
+coverage/
+.nyc_output/
+.vitest/
+
+# Env & secrets
 .env
+.env.local
+.env.*.local
+
+# OS junk
 .DS_Store
-
-# Editors
-.vscode/
-.idea/
-
-#OS
 Thumbs.db
 
-
-coverage/
-.vitest/
+# Editors / IDE
+.vscode/
+.idea/
