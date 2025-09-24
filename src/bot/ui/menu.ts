@@ -5,9 +5,6 @@ export function mainMenu(chatId: number) {
   const pages = getPages(chatId);
   return Markup.inlineKeyboard([
     [Markup.button.callback('Scan', 'act_scan'), Markup.button.callback('Search', 'act_search')],
-    [
-      Markup.button.callback(`Pages: ${pages} (set)`, 'act_set_pages'),
-      Markup.button.callback('Status', 'act_status'),
-    ],
+    [Markup.button.callback(`Pages: ${pages} (set)`, 'act_set_pages')],
   ]);
 }

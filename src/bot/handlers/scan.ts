@@ -1,10 +1,9 @@
 import { Telegraf } from 'telegraf';
 import type { PageScanner as IPageScanner } from '../../domain/page-scanner.js';
-import { chunkText } from '../utils/chunk.js';
-import { noPreview, safeEdit, safeSend, sleep } from '../utils/messaging.js';
+import { chunkText } from '../util/chunk.js';
+import { noPreview, safeEdit, safeSend, sleep } from '../util/messaging.js';
 import { normalizeUrl } from '../../core/utils/url.js';
-
-const NEXT_TIP = 'Type /start to continue';
+import { mainMenu } from '../ui/menu.js';
 
 export async function performScan(
   bot: Telegraf,
@@ -15,18 +14,15 @@ export async function performScan(
   const status = await safeSend(bot, chatId, `Scanning ${pages} page(s)… 0/${pages}`, noPreview);
   const statusId = status?.message_id;
 
-  // Map<url, items[]>, first-wins
-  const acc = new Map<string, string[]>();
+  const acc = new Map<string, string[]>(); // Map<url, items[]>, first-wins
 
   const tasks = Array.from({ length: pages }, (_, i) => i + 1).map(async (p) => {
     const sites = await scanner.scanPage(p);
     for (const s of sites) {
       const url = normalizeUrl(s.url);
       if (acc.has(url)) continue;
-
       const names = (s.items ?? []).map((i) => i.name);
       if (names.length === 0) continue;
-
       acc.set(url, names);
     }
   });
@@ -50,7 +46,11 @@ export async function performScan(
     if (statusId)
       await safeEdit(bot, chatId, statusId, `Done. Unique URLs with items: 0.`, noPreview);
     await safeSend(bot, chatId, 'No sites with items found.', noPreview);
-    await safeSend(bot, chatId, NEXT_TIP, noPreview);
+    const menu = mainMenu(chatId);
+    await safeSend(bot, chatId, 'Choose an action:', {
+      ...noPreview,
+      reply_markup: menu.reply_markup,
+    });
     return;
   }
 
@@ -64,5 +64,10 @@ export async function performScan(
 
   if (statusId)
     await safeEdit(bot, chatId, statusId, `Done. Unique URLs with items: ${acc.size}.`, noPreview);
-  await safeSend(bot, chatId, NEXT_TIP, noPreview);
+
+  const menu = mainMenu(chatId);
+  await safeSend(bot, chatId, 'Choose an action:', {
+    ...noPreview,
+    reply_markup: menu.reply_markup,
+  });
 }

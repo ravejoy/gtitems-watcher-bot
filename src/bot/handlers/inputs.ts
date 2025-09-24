@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf';
-import { noPreview, safeSend } from '../utils/messaging.js';
+import { noPreview, safeSend } from '../util/messaging.js';
 import {
   getPages,
   isAwaitingPages,
@@ -9,8 +9,8 @@ import {
 } from '../state/store.js';
 import { performSearch } from './search.js';
 import type { PageScanner as IPageScanner } from '../../domain/page-scanner.js';
-import { nextStepsText } from '../ui/text.js';
 import { applyPages } from './pages.js';
+import { mainMenu } from '../ui/menu.js';
 
 export function wireInputs(bot: Telegraf, scanner: IPageScanner) {
   bot.action('act_set_pages', async (ctx) => {
@@ -43,8 +43,11 @@ export function wireInputs(bot: Telegraf, scanner: IPageScanner) {
       setAwaitingPages(chatId, false);
       const msg = applyPages(chatId, text);
       await safeSend(bot, chatId, msg, noPreview);
-      if (!msg.startsWith('Please'))
-        await safeSend(bot, chatId, 'Type /start to continue', noPreview);
+      const menu = mainMenu(chatId);
+      await safeSend(bot, chatId, 'Choose an action:', {
+        ...noPreview,
+        reply_markup: menu.reply_markup,
+      });
       return;
     }
 

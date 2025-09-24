@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { logger } from '../lib/logger.js';
 import type { PageScanner as IPageScanner } from '../domain/page-scanner.js';
-import { noPreview, safeSend } from './utils/messaging.js';
+import { noPreview, safeSend } from './util/messaging.js';
 import { getPages, setPages } from './state/store.js';
 import { mainMenu } from './ui/menu.js';
 import { performScan } from './handlers/scan.js';
@@ -38,6 +38,11 @@ export function createBot(scanner: IPageScanner) {
     if (!Number.isFinite(n)) return safeSend(bot, chatId, 'Usage: /setpages <number>', noPreview);
     const pages = setPages(chatId, n);
     await safeSend(bot, chatId, `Pages set to ${pages}.`, noPreview);
+    const menu = mainMenu(chatId);
+    await safeSend(bot, chatId, 'Choose an action:', {
+      ...noPreview,
+      reply_markup: menu.reply_markup,
+    });
   });
 
   bot.command('scan', async (ctx) => {
@@ -51,25 +56,26 @@ export function createBot(scanner: IPageScanner) {
   bot.command('search', async (ctx) => {
     const chatId = ctx.chat!.id;
     const q = (ctx.message?.text ?? '').slice('/search'.length).trim();
-    if (!q)
-      return safeSend(bot, chatId, 'Usage: /search <keyword1, keyword2 | keyword3>', noPreview);
+    if (!q) {
+      await safeSend(bot, chatId, 'Usage: /search <keyword1, keyword2 | keyword3>', noPreview);
+      const menu = mainMenu(chatId);
+      await safeSend(bot, chatId, 'Choose an action:', {
+        ...noPreview,
+        reply_markup: menu.reply_markup,
+      });
+      return;
+    }
     await performSearch(bot, scanner, chatId, getPages(chatId), q);
   });
 
+  // removed act_status
   bot.action('act_scan', async (ctx) => {
     const chatId = ctx.chat!.id;
     await ctx.answerCbQuery();
     await performScan(bot, scanner, chatId, getPages(chatId));
   });
 
-  bot.action('act_status', async (ctx) => {
-    const chatId = ctx.chat!.id;
-    await ctx.answerCbQuery();
-    await safeSend(bot, chatId, `Pages: ${getPages(chatId)}`, noPreview);
-  });
-
   wireInputs(bot, scanner);
-
   bot.catch((err) => logger.error({ err }, 'bot error'));
   return bot;
 }
