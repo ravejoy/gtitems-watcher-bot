@@ -32,12 +32,14 @@ export async function performSearch(
   );
   const statusId = status?.message_id;
 
+  const uniqueSeen = new Set<string>(); // all unique URLs encountered
   const acc = new Map<string, string[]>(); // Map<url, items[]>, first-wins
 
   const tasks = Array.from({ length: pages }, (_, i) => i + 1).map(async (p) => {
     const sites = await scanner.scanPage(p);
     for (const s of sites) {
       const url = normalizeUrl(s.url);
+      uniqueSeen.add(url);
       if (acc.has(url)) continue;
       const names = (s.items ?? []).map((i) => i.name);
       const filtered = filterNamesByKeys(names, keys);
@@ -55,14 +57,22 @@ export async function performSearch(
         bot,
         chatId,
         statusId,
-        `Searching ${pages} page(s) for: ${keys.join(', ')}… ${completed}/${pages}\nUnique URLs matched: ${acc.size}`,
+        `Searching ${pages} page(s) for: ${keys.join(', ')}… ${completed}/${pages}\nUnique URLs seen: ${uniqueSeen.size} • Matched: ${acc.size}`,
         noPreview,
       );
     }
   }
 
   if (acc.size === 0) {
-    if (statusId) await safeEdit(bot, chatId, statusId, `Done. Unique URLs matched: 0.`, noPreview);
+    if (statusId) {
+      await safeEdit(
+        bot,
+        chatId,
+        statusId,
+        `Done. Unique URLs seen: ${uniqueSeen.size}. Matched: 0.`,
+        noPreview,
+      );
+    }
     await safeSend(bot, chatId, 'No matches found.', noPreview);
     const menu = mainMenu(chatId);
     await safeSend(bot, chatId, 'Choose an action:', {
@@ -80,9 +90,15 @@ export async function performSearch(
     await sleep(250);
   }
 
-  if (statusId)
-    await safeEdit(bot, chatId, statusId, `Done. Unique URLs matched: ${acc.size}.`, noPreview);
-
+  if (statusId) {
+    await safeEdit(
+      bot,
+      chatId,
+      statusId,
+      `Done. Unique URLs seen: ${uniqueSeen.size}. Matched: ${acc.size}.`,
+      noPreview,
+    );
+  }
   const menu = mainMenu(chatId);
   await safeSend(bot, chatId, 'Choose an action:', {
     ...noPreview,

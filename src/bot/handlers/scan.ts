@@ -14,12 +14,14 @@ export async function performScan(
   const status = await safeSend(bot, chatId, `Scanning ${pages} page(s)… 0/${pages}`, noPreview);
   const statusId = status?.message_id;
 
+  const uniqueSeen = new Set<string>(); // all unique URLs encountered (with or without items)
   const acc = new Map<string, string[]>(); // Map<url, items[]>, first-wins
 
   const tasks = Array.from({ length: pages }, (_, i) => i + 1).map(async (p) => {
     const sites = await scanner.scanPage(p);
     for (const s of sites) {
       const url = normalizeUrl(s.url);
+      uniqueSeen.add(url);
       if (acc.has(url)) continue;
       const names = (s.items ?? []).map((i) => i.name);
       if (names.length === 0) continue;
@@ -36,15 +38,22 @@ export async function performScan(
         bot,
         chatId,
         statusId,
-        `Scanning ${pages} page(s)… ${completed}/${pages}\nUnique URLs with items: ${acc.size}`,
+        `Scanning ${pages} page(s)… ${completed}/${pages}\nUnique URLs seen: ${uniqueSeen.size} • With items: ${acc.size}`,
         noPreview,
       );
     }
   }
 
   if (acc.size === 0) {
-    if (statusId)
-      await safeEdit(bot, chatId, statusId, `Done. Unique URLs with items: 0.`, noPreview);
+    if (statusId) {
+      await safeEdit(
+        bot,
+        chatId,
+        statusId,
+        `Done. Unique URLs seen: ${uniqueSeen.size}. With items: 0.`,
+        noPreview,
+      );
+    }
     await safeSend(bot, chatId, 'No sites with items found.', noPreview);
     const menu = mainMenu(chatId);
     await safeSend(bot, chatId, 'Choose an action:', {
@@ -62,9 +71,15 @@ export async function performScan(
     await sleep(250);
   }
 
-  if (statusId)
-    await safeEdit(bot, chatId, statusId, `Done. Unique URLs with items: ${acc.size}.`, noPreview);
-
+  if (statusId) {
+    await safeEdit(
+      bot,
+      chatId,
+      statusId,
+      `Done. Unique URLs seen: ${uniqueSeen.size}. With items: ${acc.size}.`,
+      noPreview,
+    );
+  }
   const menu = mainMenu(chatId);
   await safeSend(bot, chatId, 'Choose an action:', {
     ...noPreview,
