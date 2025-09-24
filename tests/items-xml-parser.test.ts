@@ -12,7 +12,7 @@ const SAMPLE_XML = `<?xml version='1.0' encoding='windows-1251'?>
     <img>/items/1119.jpg</img>
     <itemid>9600123</itemid>
     <itemv>1119</itemv>
-    <link>&lt;a href='/cgi-bin/m.cgi?a=tool_jobs&amp;id=9600123&amp;site=26742&amp;version=v5.2' title='Работы на спаунере'&gt;</link>
+    <link>&lt;a href='/cgi-bin/m.cgi?a=tool_jobs&amp;id=9600123&amp;site=26742&amp;version=v5.2' title='Work on the spawner'&gt;</link>
   </items>
   <items>
     <id>gtitem_9600124</id>
@@ -21,7 +21,7 @@ const SAMPLE_XML = `<?xml version='1.0' encoding='windows-1251'?>
     <img>/items/1119.jpg</img>
     <itemid>9600124</itemid>
     <itemv>1119</itemv>
-    <link>&lt;a href='/cgi-bin/m.cgi?a=tool_jobs&amp;id=9600124&amp;site=26742&amp;version=v5.2' title='Работы на спаунере'&gt;</link>
+    <link>&lt;a href='/cgi-bin/m.cgi?a=tool_jobs&amp;id=9600124&amp;site=26742&amp;version=v5.2' title='Work on the spawner'&gt;</link>
   </items>
   <items>
     <id>gtitem_9600125</id>
@@ -30,7 +30,7 @@ const SAMPLE_XML = `<?xml version='1.0' encoding='windows-1251'?>
     <img>/items/1119.jpg</img>
     <itemid>9600125</itemid>
     <itemv>1119</itemv>
-    <link>&lt;a href='/cgi-bin/m.cgi?a=tool_jobs&amp;id=9600125&amp;site=26742&amp;version=v5.2' title='Работы на спаунере'&gt;</link>
+    <link>&lt;a href='/cgi-bin/m.cgi?a=tool_jobs&amp;id=9600125&amp;site=26742&amp;version=v5.2' title='Work on the spawner'&gt;</link>
   </items>
 </item>`;
 

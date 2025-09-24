@@ -1,7 +1,7 @@
 import { Telegraf } from 'telegraf';
 import { logger } from '../lib/logger.js';
 import type { PageScanner as IPageScanner } from '../domain/page-scanner.js';
-import { noPreview, safeSend } from './util/messaging.js';
+import { noPreview, safeSend } from './utils/messaging.js';
 import { getPages, setPages } from './state/store.js';
 import { mainMenu } from './ui/menu.js';
 import { performScan } from './handlers/scan.js';

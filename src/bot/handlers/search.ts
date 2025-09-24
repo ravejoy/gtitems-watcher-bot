@@ -1,28 +1,11 @@
 import { Telegraf } from 'telegraf';
 import type { PageScanner as IPageScanner } from '../../domain/page-scanner.js';
-import { parseKeywords } from '../../core/utils/search.js';
-import { chunkText } from '../util/chunk.js';
-import { noPreview, safeEdit, safeSend, sleep } from '../util/messaging.js';
+import { parseKeywords, filterNamesByKeys } from '../../core/utils/search.js';
+import { chunkText } from '../utils/chunk.js';
+import { noPreview, safeEdit, safeSend, sleep } from '../utils/messaging.js';
+import { normalizeUrl } from '../../core/utils/url.js';
 
 const NEXT_TIP = 'Type /start to continue';
-
-function normalizeUrl(u: string): string {
-  const hash = u.indexOf('#');
-  return hash >= 0 ? u.slice(0, hash) : u;
-}
-
-function normalize(s: string) {
-  return s.toLowerCase().replace(/ё/g, 'е');
-}
-
-export function filterNamesByKeys(names: string[], keys: string[]): string[] {
-  if (!keys.length || !names.length) return [];
-  const ks = keys.map(normalize);
-  return names.filter((n) => {
-    const x = normalize(n);
-    return ks.some((k) => x.includes(k));
-  });
-}
 
 export async function performSearch(
   bot: Telegraf,
@@ -46,7 +29,6 @@ export async function performSearch(
   );
   const statusId = status?.message_id;
 
-  // Map<url, items[]>
   const acc = new Map<string, string[]>();
 
   const tasks = Array.from({ length: pages }, (_, i) => i + 1).map(async (p) => {
@@ -79,9 +61,7 @@ export async function performSearch(
   }
 
   if (acc.size === 0) {
-    if (statusId) {
-      await safeEdit(bot, chatId, statusId, `Done. Unique URLs matched: 0.`, noPreview);
-    }
+    if (statusId) await safeEdit(bot, chatId, statusId, `Done. Unique URLs matched: 0.`, noPreview);
     await safeSend(bot, chatId, 'No matches found.', noPreview);
     await safeSend(bot, chatId, NEXT_TIP, noPreview);
     return;
@@ -95,8 +75,7 @@ export async function performSearch(
     await sleep(250);
   }
 
-  if (statusId) {
+  if (statusId)
     await safeEdit(bot, chatId, statusId, `Done. Unique URLs matched: ${acc.size}.`, noPreview);
-  }
   await safeSend(bot, chatId, NEXT_TIP, noPreview);
 }

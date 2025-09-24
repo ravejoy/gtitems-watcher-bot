@@ -1,5 +1,5 @@
 import { Telegraf } from 'telegraf';
-import { noPreview, safeSend } from '../util/messaging.js';
+import { noPreview, safeSend } from '../utils/messaging.js';
 import {
   getPages,
   isAwaitingPages,
@@ -27,7 +27,7 @@ export function wireInputs(bot: Telegraf, scanner: IPageScanner) {
     await safeSend(
       bot,
       chatId,
-      'Send search query (e.g., `nectar, туман | лён`). Multiple keywords allowed.',
+      'Send search query (e.g., `nectar, fog | flax`). Multiple keywords allowed.',
       {
         ...noPreview,
         parse_mode: 'Markdown',

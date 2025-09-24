@@ -1,14 +1,10 @@
 import { Telegraf } from 'telegraf';
 import type { PageScanner as IPageScanner } from '../../domain/page-scanner.js';
-import { chunkText } from '../util/chunk.js';
-import { noPreview, safeEdit, safeSend, sleep } from '../util/messaging.js';
+import { chunkText } from '../utils/chunk.js';
+import { noPreview, safeEdit, safeSend, sleep } from '../utils/messaging.js';
+import { normalizeUrl } from '../../core/utils/url.js';
 
 const NEXT_TIP = 'Type /start to continue';
-
-function normalizeUrl(u: string): string {
-  const hash = u.indexOf('#');
-  return hash >= 0 ? u.slice(0, hash) : u;
-}
 
 export async function performScan(
   bot: Telegraf,
@@ -19,7 +15,7 @@ export async function performScan(
   const status = await safeSend(bot, chatId, `Scanning ${pages} page(s)… 0/${pages}`, noPreview);
   const statusId = status?.message_id;
 
-  // Map<url, items[]>
+  // Map<url, items[]>, first-wins
   const acc = new Map<string, string[]>();
 
   const tasks = Array.from({ length: pages }, (_, i) => i + 1).map(async (p) => {
@@ -51,9 +47,8 @@ export async function performScan(
   }
 
   if (acc.size === 0) {
-    if (statusId) {
+    if (statusId)
       await safeEdit(bot, chatId, statusId, `Done. Unique URLs with items: 0.`, noPreview);
-    }
     await safeSend(bot, chatId, 'No sites with items found.', noPreview);
     await safeSend(bot, chatId, NEXT_TIP, noPreview);
     return;
@@ -67,8 +62,7 @@ export async function performScan(
     await sleep(250);
   }
 
-  if (statusId) {
+  if (statusId)
     await safeEdit(bot, chatId, statusId, `Done. Unique URLs with items: ${acc.size}.`, noPreview);
-  }
   await safeSend(bot, chatId, NEXT_TIP, noPreview);
 }
