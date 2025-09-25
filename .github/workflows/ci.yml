@@ -51,6 +51,8 @@ jobs:
   docker:
     needs: [lint, test, ts-build]
     runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/ravejoy/gtitems-watcher-bot
     steps:
       - uses: actions/checkout@v4
 
@@ -65,7 +67,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/${{ github.repository }}
+          images: ${{ env.IMAGE }}
           tags: |
             type=raw,value=latest
             type=sha
