@@ -14,7 +14,7 @@ async function bootstrap() {
   const source = new FragmentClient();
   const parser = new XmlFragmentParser();
 
-  const scanner = new PageScanner(links, source, parser, { concurrency: 12 });
+  const scanner = new PageScanner(links, source, parser, { concurrency: 6 });
 
   const bot = createBot(scanner);
   await bot.launch();
