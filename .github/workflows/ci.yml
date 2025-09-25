@@ -51,8 +51,9 @@ jobs:
   docker:
     needs: [lint, test, ts-build]
     runs-on: ubuntu-latest
+    if: github.event_name != 'pull_request'
     env:
-      IMAGE: ghcr.io/ravejoy/gtitems-watcher-bot
+      IMAGE: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}
     steps:
       - uses: actions/checkout@v4
 
@@ -74,6 +75,8 @@ jobs:
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
+        with:
+          driver: docker
 
       - name: Build and push
         uses: docker/build-push-action@v6
@@ -83,15 +86,20 @@ jobs:
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   deploy:
     needs: docker
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' && secrets.RENDER_DEPLOY_HOOK != ''
+    if: github.ref == 'refs/heads/main'
     steps:
-      - name: Trigger Render deploy
-        run: curl -fsSL -X POST "$RENDER_DEPLOY_HOOK"
+      - name: Trigger Render deploy if hook is set
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -n "$RENDER_DEPLOY_HOOK" ]; then
+            echo "Triggering Render deploy..."
+            curl -fsSL -X POST "$RENDER_DEPLOY_HOOK"
+            echo "Render deploy hook triggered."
+          else
+            echo "RENDER_DEPLOY_HOOK is not set. Skipping deploy."
+          fi
