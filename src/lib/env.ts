@@ -9,18 +9,13 @@ const schema = z.object({
   TELEGRAM_BOT_TOKEN: z.string(),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  CONCURRENCY: z.coerce.number().int().min(1).max(20).default(6),
 });
 
 type Env = z.infer<typeof schema>;
 
 let cached: Env | null = null;
 
-/**
- * Returns validated env. On first call:
- * - if `overrides` is provided, it will be used as the source
- * - otherwise, `process.env` is used
- * The result is cached until `resetEnv()` is called.
- */
 export function getEnv(overrides?: Partial<NodeJS.ProcessEnv>): Env {
   if (cached) return cached;
   const source = overrides ?? process.env;
@@ -28,7 +23,6 @@ export function getEnv(overrides?: Partial<NodeJS.ProcessEnv>): Env {
   return cached;
 }
 
-/** Clears the cached env. Intended for tests. */
 export function resetEnv(): void {
   cached = null;
 }
