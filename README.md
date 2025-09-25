@@ -1,7 +1,12 @@
 # GT Items Watcher Bot
 
+[![CI](https://github.com/ravejoy/gtitems-watcher-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/ravejoy/gtitems-watcher-bot/actions/workflows/ci.yml)
+![Node.js](https://img.shields.io/badge/node-%3E%3D18-green)
+![TypeScript](https://img.shields.io/badge/typescript-5.x-blue)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 A Telegram bot that scans a listing website, walks through paginated pages, opens “reviews” pages for each site, and extracts item names.  
-Built with **TypeScript**, **Telegraf**, and **Zod**. Designed to be clean and portfolio-friendly.
+Built with **TypeScript**, **Telegraf**, and **Zod**. 
 
 ## Features
 
@@ -10,7 +15,7 @@ Built with **TypeScript**, **Telegraf**, and **Zod**. Designed to be clean and p
 - Dedup review links
 - Fast scanning via concurrency with simple progress updates
 - Keyword **Search** mode with multi-keyword filtering
-- Works in **polling** (local) and **webhook** (deploy) modes
+- Works in **polling** mode (both local and deploy)
 - Modular architecture (bot/core/infra/lib) with unit tests
 
 ## Tech Stack
@@ -24,7 +29,7 @@ Built with **TypeScript**, **Telegraf**, and **Zod**. Designed to be clean and p
 
 ---
 
-## Quick Start (Local, Polling Mode)
+## Quick Start (Local)
 
 ### Prerequisites
 
@@ -62,7 +67,7 @@ Now open your bot in Telegram and type `/start`.
 - **Scan**: scans configured number of pages and prints only links that actually contain items.
 - **Search**: filters items by keywords (supports multiple keywords).
 - **Pages**: set how many listing pages to scan (1..100).
-- After results, you’ll see: **“Type /start to continue”**.
+- After results, menu will appear again automatically.
 
 ---
 
@@ -84,39 +89,25 @@ tests/
 
 ---
 
-## Deploy (Webhook Mode)
+## Deploy
 
-### Option A: Render (recommended)
+### Option A: Background Worker (Docker-based)
 
 1. Push your repo to GitHub.
-2. Create a **Web Service** on Render (Free plan is fine for a pet/portfolio).
-3. Set env vars:
+2. CI/CD builds a Docker image and pushes it to GitHub Container Registry.
+3. Create a **Background Worker** on **Render**, or on **Koyeb** (Free plan available), or use any similar platform.
+4. Configure env vars:
    - `TELEGRAM_BOT_TOKEN`
-   - `BASE_URL` — root of the target website
-   - Optional: `PUBLIC_URL` — your public service URL (Render provides `RENDER_EXTERNAL_URL` automatically)
-4. Render will build and start the app using `render.yaml`.
+   - `BASE_URL=https://example.com`
+5. Deploy worker with the prebuilt Docker image.
 
-The server sets the Telegram webhook automatically to:
+### Option B: Docker (manual)
 
-```
-<PUBLIC_URL>/webhook/<TELEGRAM_BOT_TOKEN>
-```
-
-Health check: `GET /healthz` → `200 ok`.
-
-### Option B: Docker
-
-Build and run:
+Run the same as CI/CD but manually:
 
 ```bash
 docker build -t gtitems-bot .
-docker run --rm -p 10000:10000   -e TELEGRAM_BOT_TOKEN=xxx   -e BASE_URL=https://example.com   -e PUBLIC_URL=http://localhost:10000   gtitems-bot
-```
-
-Compose:
-
-```bash
-docker-compose up --build
+docker run --rm -e TELEGRAM_BOT_TOKEN=xxx -e BASE_URL=https://example.com gtitems-bot
 ```
 
 ---
@@ -126,11 +117,11 @@ docker-compose up --build
 ```
 src/
   bot/
-    main.ts            # bot wiring (webhook/polling flows are initialized from index/server)
+    main.ts            # bot wiring (polling flows are initialized from index/server)
     handlers/          # scan, search, inputs
     state/             # in-memory chat settings
     ui/                # menu and texts
-    util/              # messaging helpers, chunking
+    utils/              # messaging helpers, chunking
   core/
     ports/             # abstractions
     services/          # page scanning service
@@ -158,12 +149,9 @@ NODE_ENV=development
 LOG_LEVEL=info
 TELEGRAM_BOT_TOKEN=
 BASE_URL=https://example.com
-# PUBLIC_URL is optional in deploys; if omitted, server uses platform-provided public URL when available.
-# PUBLIC_URL=https://your-service.example.com
 ```
 
 - **Local polling** uses `src/index.ts`.
-- **Webhook server** uses `src/server.ts` (Express).
 
 ---
 
@@ -186,7 +174,7 @@ BASE_URL=https://example.com
 
 ## CI
 
-GitHub Actions run **lint**, **test**, and **build** in parallel.  
+GitHub Actions run **lint**, **test**, **build**, and **deploy** via Docker to Render/Koyeb.  
 See `.github/workflows/ci.yml`.
 
 ---
