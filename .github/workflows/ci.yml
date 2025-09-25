@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          cache: npm
       - run: npm ci
       - run: npm run lint --if-present
 
@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          cache: npm
       - run: npm ci
       - run: npm test
 
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: 'npm'
+          cache: npm
       - run: npm ci
       - run: npm run build
 
@@ -89,7 +89,7 @@ jobs:
   deploy:
     needs: docker
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' && secrets.RENDER_DEPLOY_HOOK != ''
     steps:
       - name: Trigger Render deploy
         run: curl -fsSL -X POST "$RENDER_DEPLOY_HOOK"
